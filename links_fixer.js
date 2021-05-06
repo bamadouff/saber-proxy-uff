@@ -1,7 +1,8 @@
-(function(linksFixer) {
+(function(saber) {
     "use strict";
 
-    linksFixer.run();
+    if (typeof saber.main === 'function')
+        saber.main();
 })({
     proxies: [
         {
@@ -13,10 +14,19 @@
     myInterval: null,
     runs: 0,
     fixedLinks: 0,
+    proxyIsSet: function() {
+        return this.proxy !== undefined
+            && this.proxy !== null
+            && this.proxy.domain !== undefined
+            && this.proxy.url !== undefined;
+    },
     myIntervalIsSet: function() {
         return this.myInterval !== null && this.myInterval !== undefined;
     },
     fixLink: function(elmt) {
+        if (!this.proxyIsSet())
+            return;
+
         this.fixedLinks++;
         elmt.href = elmt.href.replace(this.proxy.domain, this.proxy.url);
     },
@@ -34,6 +44,9 @@
         return this.runs > 3 && this.fixedLinks > 0;
     },
     loopThruAnchors: function() {
+        if (!this.proxyIsSet())
+            return;
+
         Array
         .from(document.getElementsByTagName('a'))
         .forEach(function(el) {
@@ -41,7 +54,7 @@
                 this.fixLink(el);
         }.bind(this));
     },
-    main: function() {
+    run: function() {
         this.runs++;
 
         if (this.isTimeToClearMyInterval())
@@ -50,17 +63,25 @@
         this.loopThruAnchors();
     },
     setProxy: function() {
+        if (this.proxyIsSet())
+            return;
+
         this.proxies.forEach(function(p) {
             if (new RegExp(p.url).test(window.location))
                 this.proxy = p;
         }.bind(this));
     },
-    run: function() {
+    main: function() {
         this.setProxy();
 
-        if (this.proxy === null || this.proxy === undefined)
+        /*
+         * If the proxy is not set, it must be because the page's url is not
+         * listed in the **proxies** property of this object. If so, none of 
+         * the links need processing and the extension must not be executed.
+         */
+        if (!this.proxyIsSet())
             return;
 
-        this.myInterval = setInterval(this.main.bind(this), 500);
+        this.myInterval = setInterval(this.run.bind(this), 500);
     }
 });
